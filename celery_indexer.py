@@ -96,10 +96,7 @@ def add_event(event_text):
           if (counter % 1000 == 0):
               add_event.db.commit()
           cursor = None
-       # if (counter % 50000 == 0):
-         #     cursor2 = db.cursor()
-              # execute SQL query using execute() method.
-     #         cursor2.execute("flush ramchunk rt")
+
 
     except Exception, e:
           logger.error("Error %s", event_text)
