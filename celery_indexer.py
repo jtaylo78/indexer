@@ -1,15 +1,8 @@
 #!/usr/bin/env python
-import MySQLdb
 import logging
-from celery import Celery
 from celery import Task
-import MySQLdb
 from celery import Celery
 import psycopg2
-host = '127.0.0.1'
-port = 9306
-charset = 'utf8'
-counter = 1
 import time
 try:
     import re2 as re
@@ -18,8 +11,11 @@ except ImportError:
 else:
     re.set_fallback_notification(re.FALLBACK_WARNING)
 
+
+counter = 1
 field_dict = {}
 field_regex = {}
+
 app = Celery('indexer', backend='rpc://',broker='pyamqp://guest@localhost//')
 
 
@@ -28,31 +24,58 @@ def load_regex():
     field_regex['user'] = "\\s*Account\\s*Name:\\s*(\\S*)\\s+"
     field_regex['domain'] = "Account\\s?Domain:\\s*(\\S*)\\s+"
     field_regex['logonType'] = "Logon\\s?Type:\\s*(\\d*)\\s+"
-
-    field_regex['User_1'] = "New\\s+Logon:\\s+.*\\s+Account\\s+Name:\\s+(\\S*)\\s+"
-    field_regex['User_2'] = "New\\s+Logon:\\s+.*\\s+Account\\s+Name:\\s+.*\\s+\\s+Account\\s+Domain:\\s+(.*)\\s+"
-    field_regex['processGuid']= "ProcessGuid:\\s{(\\S*)}"
+    field_regex['user_1'] = "New\\s+Logon:\\s+.*\\s+Account\\s+Name:\\s+(\\S*)\\s+"
+    field_regex['user_2'] = "New\\s+Logon:\\s+.*\\s+Account\\s+Name:\\s+.*\\s+\\s+Account\\s+Domain:\\s+(.*)\\s+"
+    field_regex['process_guid']= "ProcessGuid:\\s{(\\S*)}"
     field_regex['image'] = "Image:\\s(.*)\\sComman"
-    field_regex['commandLine'] = "CommandLine:\\s+(.*)\\s+CurrentDirectory"
-    field_regex['currentDirectory'] = "CurrentDirectory:\\s+(.*)\\s+User"
-    field_regex['user'] = "User:\\s+(.*)\\s+LogonGuid"
+    field_regex['command_line'] = "CommandLine:\\s+(.*)\\s+CurrentDirectory"
+    field_regex['current_directory'] = "CurrentDirectory:\\s+(.*)\\s+User"
+    #field_regex['user'] = "User:\\s+(.*)\\s+LogonGuid"
     field_regex['hashes'] = "Hashes:\\s+(\\S*)"
-    field_regex['parentProcessGuid'] = "ParentProcessGuid:\\s?{(.*)}\\s?"
-    field_regex['parentImage'] = "ParentImage:\\s?(.*)\\s?Parent"
-    field_regex['parentCommandLine'] = "ParentCommandLine:\\s?(.*)"
-    field_regex['eventType'] = "EventType:\\s+(\\S*)"
+    field_regex['parent_process_guid'] = "ParentProcessGuid:\\s?{(.*)}\\s?"
+    field_regex['parent_image'] = "ParentImage:\\s?(.*)\\s?Parent"
+    field_regex['parent_command_line'] = "ParentCommandLine:\\s?(.*)"
+    field_regex['event_type'] = "EventType:\\s+(\\S*)"
     field_regex['source'] = "\\sSource:\\s+(\\S*)"
-    field_regex['integrityLevel'] = "\\sIntegrityLevel:\\s+(\\S*)"
-    field_regex['utcTime'] = "\\sUtcTime:\\s+(.*)\\sProcessGuid"
-    field_regex['eventId'] = "\\sEventID:\\s+(\\d+)"
+    field_regex['integrity_level'] = "\\sIntegrityLevel:\\s+(\\S*)"
+    field_regex['utc_time'] = "\\sUtcTime:\\s+(.*)\\sProcessGuid"
+    field_regex['event_id'] = "\\sEventID:\\s+(\\d+)"
 
 def field_extract(event):
+    match_dict = {}
     for k,v in field_regex.items():
         match = re.search(v, event)
         if match:
-            print "Match found field %s match %s" % (k,match.group(1))
-            #print
-        #print(k, v)
+            match_dict[k] = match.group(1)
+
+    for k_1, v_1 in match_dict.items():
+        print "Match found field %s match %s" % (k_1, v_1)
+    match_dict['event_full'] = event
+    placeholders = ', '.join(['%s'] * len(match_dict))
+    columns = ', '.join(match_dict.keys())
+    sql = "INSERT INTO events (%s) \
+                 VALUES (%s)" % \
+            (columns, placeholders)
+    print sql
+    try:
+
+            # Execute the SQL command
+            cursor = add_event.db.cursor()
+            cursor.execute(sql, match_dict.values())
+            global counter
+            counter += 1
+            # Commit your changes in the database
+            if (counter % 1000 == 0):
+                add_event.db.commit()
+            #cursor = None
+    except Exception, e:
+            add_event.db.commit()
+            logger.error("Error %s", event)
+            logger.error(e, exc_info=True)
+            time.sleep(50)
+
+
+
 
 
 logger = logging.getLogger('myapp')
@@ -79,27 +102,4 @@ def add_event(event_text):
     print 'long time task begins'
     load_regex()
     field_extract(event_text)
-    # time.sleep(1)
-    #add_event.set_count(1)
-    # Prepare SQL query to INSERT a record into the database.
-    sql = "INSERT INTO events (\
-                event_full) \
-             VALUES ('%s')" % \
-          (MySQLdb.escape_string(event_text))
-    try:
-          # Execute the SQL command
-          cursor = add_event.db.cursor()
-          cursor.execute(sql)
-          global counter
-          counter += 1
-          # Commit your changes in the database
-          if (counter % 1000 == 0):
-              add_event.db.commit()
-          cursor = None
 
-
-    except Exception, e:
-          logger.error("Error %s", event_text)
-          logger.error(e, exc_info=True)
-      #      # Rollback in case there is any error
-      #      # db.rollback()

@@ -5,11 +5,6 @@ import logging
 from librabbitmq import Connection
 
 
-host = '127.0.0.1'
-port = 9306
-charset = 'utf8'
-counter = 700000
-
 
 
 
@@ -22,17 +17,17 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.WARNING)
 
 
-#connection = pika.BlockingConnection(pika.ConnectionParameters(
-#        host='localhost'))
-#channel = connection.channel()
+connection = pika.BlockingConnection(pika.ConnectionParameters(
+        host='localhost'))
+channel = connection.channel()
 
 
 #from librabbitmq import Connection
 
-conn = Connection(host="localhost", userid="guest",
-                   password="guest", virtual_host="/")
+#conn = Connection(host="localhost", userid="guest",
+#                   password="guest", virtual_host="/")
 
-channel = conn.channel()
+#channel = conn.channel()
 #channel.exchange_declare(exchange, type, ...)
 #channel.queue_declare(queue, ...)
 #channel.queue_bind('events')
@@ -40,27 +35,27 @@ channel = conn.channel()
 
 
 #channel.queue_declare(queue='hello')
-#message_sent_counter =1
-#def callback(ch, method, properties, body):
+message_sent_counter =1
+def callback(ch, method, properties, body):
     #print(" [x] Received %s" % body)
-#    celery_indexer.add_event.delay(body)
+    celery_indexer.add_event.delay(body)
     #ch.basic_ack(delivery_tag=method.delivery_tag)
-#    global message_sent_counter
-#    message_sent_counter += 1
-#    if message_sent_counter % 100 == True:
-#        connection.process_data_events()
+    global message_sent_counter
+    message_sent_counter += 1
+    if message_sent_counter % 100 == True:
+        connection.process_data_events()
 
-def dump_message(message):
+#def dump_message(message):
 
 #        print("Body:'%s', Proeprties:'%s', DeliveryInfo:'%s'" % (
 #                  message.body, message.properties, message.delivery_info))
-        celery_indexer.add_event.delay(str(message.body))
-        message.ack()
+#        celery_indexer.add_event.delay(str(message.body))
+#        message.ack()
 
-channel.basic_consume('events',callback=dump_message)
+#channel.basic_consume('events',callback=dump_message)
 
-while True:
-    conn.drain_events()
+#while True:
+#    conn.drain_events()
     #string_body = body
 
     # prepare a cursor object using cursor() method
