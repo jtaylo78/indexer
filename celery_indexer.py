@@ -41,6 +41,8 @@ def load_regex():
     field_regex['utc_time'] = "\\sUtcTime:\\s+(.*)\\sProcessGuid"
     field_regex['event_id'] = "\\sEventID:\\s+(\\d+)"
 
+
+
 def field_extract(event):
     match_dict = {}
     for k,v in field_regex.items():
