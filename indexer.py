@@ -9,6 +9,7 @@ from librabbitmq import Connection
 
 
 
+
 logger = logging.getLogger('myapp')
 hdlr = logging.FileHandler('/var/tmp/myapp.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
